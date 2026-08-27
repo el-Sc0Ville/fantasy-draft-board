@@ -1003,12 +1003,13 @@ function computeEdge(){
   }
   S.bestLater=bestLater;
 
-  const need=needMultipliers();
+  const need=needMultipliers(), slots=slotFactors();
   for(const p of S.players){
     const raw = p.vorp - (S.bestLater[p.pos]||0);
     p.edgeRaw = +raw.toFixed(1);
     p.need = need[p.pos]||0;
-    p.edge = +(raw*need[p.pos]).toFixed(1);
+    p.slotf = slots[p.pos]||1;
+    p.edge = +(raw*p.slotf*p.need).toFixed(1);
   }
   return d;
 }
@@ -1049,8 +1050,26 @@ function needMultipliers(){
     } else if(R.flexLeft>0){
       out[pos] = flexPref[pos];
     } else {
-      out[pos] = benchVal[pos];
+      /* Pure bench depth. A flat value here made a 4th or 5th running back keep
+         out-bidding genuine upgrades, which simulation showed costs real points:
+         the board ended up rostering ~5 RBs to start 2-3. The first bench piece is
+         real injury insurance; the fourth is not, so value decays with depth. */
+      const depth = h - req - (st.FLEX||0);
+      out[pos] = benchVal[pos] * Math.pow(0.55, Math.max(0,depth));
     }
+  }
+  return out;
+}
+
+/* How many starting slots at this position are still unfilled (the single flex counts
+   toward RB/WR/TE). Deferring a position you need twice costs you twice, so Edge is
+   scaled by this — a one-pick lookahead alone under-weights multi-starter positions. */
+function slotFactors(){
+  const R=rosterState(), st=S.starters, out={};
+  for(const pos of POSCOL){
+    let left=Math.max(0,(st[pos]||0)-(R.have[pos]||0));
+    if(FLEX_ELIG.includes(pos) && R.flexLeft>0) left+=1;
+    out[pos]=Math.min(Math.max(1,left),2);
   }
   return out;
 }
@@ -1231,13 +1250,16 @@ function renderBoard(){
   let shown=0, html='';
   for(const p of list){
     let cls='row';
+    // "hold" means a position deliberately deferred to the last rounds — K and DEF only.
+    // A deep-bench RB just has a low edge; it isn't being held back.
+    const held=(p.pos==='K'||p.pos==='DEF') && p.need<0.15;
     if(p.drafted) cls+=' dim';
-    else { shown++; if(shown===1) cls+=' hot'; if(p.need<0.15) cls+=' dim'; }
+    else { shown++; if(shown===1) cls+=' hot'; if(held) cls+=' dim'; }
     const aR=p.adp? Math.ceil(p.adp/S.teams):null, mR=globalRank[p.pid]? Math.ceil(globalRank[p.pid]/S.teams):null;
     const dl=(p.adp&&!p.drafted&&mR)? aR-mR : null;
     const right = p.drafted
       ? `<span class="sv">pick ${p.pickNo}${p.byMe?' · you':''}</span>`
-      : p.need<0.15
+      : held
         ? `<span class="sv">hold</span>`
         : `<span class="e ${p.edge>0?'up':'neu'}">${p.edge>0?'+':''}${p.edge.toFixed(0)}</span>
            <span class="sv">${Math.round(p.surv*100)}%</span>`;
@@ -1472,8 +1494,25 @@ function renderNotes(){
   full-season totals, so anything multiplying a per-game rate by <code>gp</code> comes out 17× too small.
   This board uses the season length from the offensive projections instead.</p>
   <p><b>Edge</b> is the column to draft on: VORP minus the VORP you'd expect from the best player at that
-  position still available at your next pick, weighted by the slots you still have to fill. It answers
-  "what do I lose by waiting", not "who is best".</p>
+  position still available at your next pick, then multiplied by how many starting slots you still need at
+  that position (capped at 2) and by how much you need the position at all. It answers "what do I lose by
+  waiting", not "who is best".</p>
+  <p><b>Calibrated by simulation.</b> The weighting above isn't guesswork — it was fitted by simulating 60
+  full drafts per strategy from your actual slot, with opponents picking on ADP plus noise, and scoring each
+  resulting roster on its best legal starting lineup. Two corrections came out of it:</p>
+  <ul style="margin:5px 0 5px 17px;padding:0">
+    <li><b>Bench depth now decays.</b> A flat bench value made a 4th or 5th running back keep out-bidding
+        real upgrades — the board rostered about 5 RBs to start 2 or 3. Each extra body beyond your starters
+        and flex is now worth 55% of the last. Worth roughly <b>+7 points</b> a season.</li>
+    <li><b>Multi-starter positions are weighted up.</b> A one-pick lookahead treats each pick in isolation,
+        which systematically under-values positions where you need two starters (RB, WR) against positions
+        where you need one (QB, TE). Another <b>+7</b>.</li>
+  </ul>
+  <p>Together those beat the previous logic by <b>+14 points</b> over 60 paired drafts (t≈6, winning 46 of
+  60). For comparison, in the same simulation forcing running backs with your first two picks cost
+  <b>-21 points</b>, and forcing three cost <b>-85</b> — and RB-early stayed behind even when RB injury
+  attrition was cranked from 9% to 50%. In a full-PPR league with only 2 RB slots and one flex, and with
+  your receiving bonuses, waiting on RB is correct. Following ADP cost <b>-79</b>.</p>
   <p><b>Manager tendencies</b> come from your league's 7 completed drafts (2019-2025, 1,148 picks). For each
   manager the model holds the average round they first take a QB, TE, K and DEF, shrunk toward the league
   mean by how repeatable that habit actually is. Measured: <b>K 0.55</b> (strong — Wilty averages round 9.1,
