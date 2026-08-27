@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Armchair Draft Board</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3038;
+  --tx:#e6edf3; --dim:#8b96a5; --dimmer:#5b6673;
+  --acc:#4c9aff; --good:#3fb950; --warn:#d29922; --bad:#f85149;
+  --qb:#c678dd; --rb:#3fb950; --wr:#4c9aff; --te:#e3915d; --k:#8b96a5; --def:#e05c7e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:13px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;}
+h1,h2,h3{margin:0;font-weight:650}
+a{color:var(--acc)}
+.wrap{max-width:1680px;margin:0 auto;padding:10px}
+
+/* ---------- top bar ---------- */
+header{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+header h1{font-size:15px;letter-spacing:.2px;margin-right:auto}
+header h1 span{color:var(--dim);font-weight:400;font-size:12px}
+.stat{display:flex;flex-direction:column;line-height:1.25}
+.stat b{font-size:15px;font-variant-numeric:tabular-nums}
+.stat i{font-style:normal;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--dimmer)}
+.onclock{color:var(--warn)}
+.mine{color:var(--good)}
+button{background:var(--panel2);color:var(--tx);border:1px solid var(--line);
+  border-radius:6px;padding:6px 11px;font:inherit;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.on{background:var(--acc);border-color:var(--acc);color:#06121f;font-weight:600}
+.pill{font-size:10px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);color:var(--dim)}
+.pill.live{color:var(--good);border-color:#1d4428;background:#0d2a15}
+.pill.err{color:var(--bad);border-color:#4a1f1f;background:#2a0f0f}
+
+/* ---------- layout ---------- */
+.cols{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(0,1fr);gap:10px;align-items:start}
+@media(max-width:1080px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.card>h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);
+  padding:9px 12px;border-bottom:1px solid var(--line);background:var(--panel2);
+  display:flex;align-items:center;gap:8px}
+.card>h2 em{font-style:normal;font-size:10px;color:var(--dimmer);text-transform:none;letter-spacing:0;margin-left:auto}
+.pad{padding:11px 12px}
+
+/* ---------- filters ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:5px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.filters input{background:var(--bg);border:1px solid var(--line);color:var(--tx);
+  border-radius:6px;padding:5px 9px;font:inherit;font-size:12px;min-width:150px;flex:1}
+
+/* ---------- table ---------- */
+.scroll{max-height:74vh;overflow:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:var(--panel2);z-index:2;font-size:10px;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--dimmer);text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);
+  white-space:nowrap;font-weight:600}
+th.l,td.l{text-align:left}
+td{padding:6px 8px;border-bottom:1px solid #1e242c;text-align:right;white-space:nowrap}
+tbody tr:hover{background:#1a212b}
+tr.top1{background:linear-gradient(90deg,rgba(63,185,80,.13),transparent 55%)}
+tr.gone{opacity:.3}
+tr.gone .nm{text-decoration:line-through}
+.nm{font-weight:600}
+.sub{color:var(--dimmer);font-size:11px;font-weight:400}
+.pos{display:inline-block;min-width:30px;text-align:center;font-size:10px;font-weight:700;
+  padding:2px 5px;border-radius:4px;letter-spacing:.4px}
+.QB{background:rgba(198,120,221,.16);color:var(--qb)} .RB{background:rgba(63,185,80,.16);color:var(--rb)}
+.WR{background:rgba(76,154,255,.16);color:var(--wr)} .TE{background:rgba(227,145,93,.16);color:var(--te)}
+.K{background:rgba(139,150,165,.16);color:var(--k)}  .DEF{background:rgba(224,92,126,.16);color:var(--def)}
+.up{color:var(--good)} .down{color:var(--bad)} .neu{color:var(--dimmer)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--acc);vertical-align:middle}
+.surv{font-size:11px}
+.act{background:none;border:1px solid var(--line);color:var(--dim);border-radius:5px;
+  padding:2px 6px;font-size:10px;cursor:pointer}
+.act:hover{color:var(--tx);border-color:var(--acc)}
+tr.cliff td{border-bottom:2px solid #3d4654}
+
+/* ---------- roster / needs ---------- */
+.slots{display:flex;flex-wrap:wrap;gap:4px}
+.slot{font-size:11px;padding:3px 7px;border-radius:5px;border:1px dashed var(--line);color:var(--dimmer)}
+.slot.full{border-style:solid;border-color:#25422e;background:#0f2416;color:var(--tx)}
+.needs td{font-size:11px}
+.needs th{text-align:right}.needs th.l{text-align:left}
+.mini{font-size:11px;color:var(--dim)}
+.note{font-size:11px;color:var(--dim);line-height:1.5}
+.note b{color:var(--tx)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:11px;border-bottom:1px solid #1e242c}
+.kv:last-child{border-bottom:none}
+.kv span:first-child{color:var(--dim)}
+.err{color:var(--bad);font-size:12px}
+.loading{padding:26px 12px;text-align:center;color:var(--dim)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+  border-top-color:var(--acc);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+details summary{cursor:pointer;color:var(--dim);font-size:11px;padding:2px 0}
+code{background:var(--panel2);padding:1px 4px;border-radius:3px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Armchair Draft Board <span id="lgname"></span></h1>
+  <div class="stat"><i>Round · Pick</i><b id="curpick">—</b></div>
+  <div class="stat"><i>On the clock</i><b id="onclock">—</b></div>
+  <div class="stat"><i>Your next pick</i><b id="nextpick" class="mine">—</b></div>
+  <div class="stat"><i>Picks away</i><b id="picksaway">—</b></div>
+  <span id="live" class="pill">idle</span>
+  <button id="poll" class="on">Auto-sync ON</button>
+  <button id="manualbtn">Manual mode</button>
+  <button id="refresh">Reload data</button>
+</header>
+
+<div class="card" id="manualbar" style="display:none">
+  <h2>Manual entry <em id="manualmeta"></em></h2>
+  <div class="pad">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input id="mq" placeholder="Type a player name, then Enter…" autocomplete="off"
+             style="background:var(--bg);border:1px solid var(--line);color:var(--tx);border-radius:6px;
+                    padding:7px 10px;font:inherit;font-size:13px;flex:1;min-width:220px">
+      <button id="mundo">Undo last</button>
+      <button id="mclear">Clear all</button>
+    </div>
+    <div id="msug" style="margin-top:6px"></div>
+    <div class="note" style="margin-top:7px">Picks are logged <b>in draft order</b>, so team-by-team
+      tracking keeps working. Saved in this browser — a refresh or a crash won't lose them. Auto-sync
+      is paused while this is on; if the API comes back, turn it off and live picks take over again.</div>
+  </div>
+</div>
+
+<div id="boot" class="card"><div class="loading"><span class="spin"></span>Loading league, projections and 2025 baselines…</div></div>
+
+<div class="cols" id="main" style="display:none">
+  <!-- ============ LEFT: BOARD ============ -->
+  <div>
+    <div class="card">
+      <h2>Best available <em id="boardmeta"></em></h2>
+      <div class="filters">
+        <input id="q" placeholder="Search player…">
+        <button class="fp on" data-p="ALL">All</button>
+        <button class="fp" data-p="QB">QB</button>
+        <button class="fp" data-p="RB">RB</button>
+        <button class="fp" data-p="WR">WR</button>
+        <button class="fp" data-p="TE">TE</button>
+        <button class="fp" data-p="FLEX">Flex</button>
+        <button class="fp" data-p="K">K</button>
+        <button class="fp" data-p="DEF">DEF</button>
+        <button id="togglegone">Hide drafted</button>
+      </div>
+      <div class="scroll">
+        <table id="board">
+          <thead><tr>
+            <th class="l">#</th><th class="l">Player</th><th>Pos</th>
+            <th title="Projected points under YOUR league scoring">Proj</th>
+            <th title="Points above replacement at this position">VORP</th>
+            <th title="VORP minus the VORP you'd expect from the best player at this position still there at your next pick. This is the number to draft on.">Edge</th>
+            <th title="If you PASS on him now: chance he's still on the board the next time you pick">If I pass</th>
+            <th title="Sleeper PPR average draft position">ADP</th>
+            <th title="How many rounds earlier/later than ADP this board wants him">Δ</th>
+            <th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: PANELS ============ -->
+  <div>
+    <div class="card">
+      <h2>Your roster <em id="rostermeta"></em></h2>
+      <div class="pad">
+        <div class="slots" id="myslots"></div>
+        <div id="myplayers" style="margin-top:9px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recommendation</h2>
+      <div class="pad" id="reco"><span class="note">Waiting for the draft to start.</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Between you and your next pick <em>7 drafts of history</em></h2>
+      <div class="pad" id="upcoming"></div>
+    </div>
+
+    <div class="card">
+      <h2>Positional runs <em>what the room still needs</em></h2>
+      <div class="pad"><table class="needs" id="needs"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Your scoring vs vanilla PPR <em>same projections, your rules</em></h2>
+      <div class="pad">
+        <div class="mini" style="margin-bottom:7px">Isolates the effect of <b>your league's rules</b>, with projection disagreement removed.</div>
+        <table id="diverge"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Model notes</h2>
+      <div class="pad">
+        <div class="note" id="notes"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:10px">
+  <h2>What this is doing <em>read once, then ignore</em></h2>
+  <div class="pad">
+    <details>
+      <summary>Method, assumptions, and the parts that are modelled rather than measured</summary>
+      <div class="note" style="margin-top:8px" id="method"></div>
+    </details>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const CFG = {
+  leagueId: '1385660484409106432',
+  username: 'LegionOf12',
+  season: '2026',
+  pollMs: 4000,
+};
+
+/* Per-player priors from 2025 game logs.
+   s = sacks taken per pass attempt (shrunk to league mean)
+   d = deep-completion multiplier (40+ yd completions vs league rate)
+   b = explosive-run multiplier (40+ yd carries vs league rate)
+   teamPA = projected points allowed per game (2025 actual regressed 40% to mean) */
+const PRIORS = {"players":{"11584":{"b":0.35},"12507":{"b":1.146},"19":{"s":0.05165},"7585":{"s":0.06522,"d":0.55},"3294":{"s":0.0564,"d":0.94},"421":{"s":0.04654,"d":1.13},"8138":{"b":1.36},"8136":{"b":0.35},"4943":{"s":0.0601,"d":1.442},"11647":{"b":0.35},"5870":{"s":0.06208,"d":1.06},"12529":{"b":0.9},"6790":{"b":0.35},"1373":{"s":0.10955,"d":0.9},"6768":{"s":0.07542,"d":1.05},"6130":{"b":0.35},"6904":{"s":0.07051,"d":1.518,"b":2.342},"8154":{"b":1.2},"6804":{"s":0.05394,"d":1.432},"8205":{"b":0.35},"1166":{"s":0.06061,"d":0.55},"4046":{"s":0.06845,"d":0.98},"12524":{"s":0.08399,"d":1.05},"6797":{"s":0.09675,"d":1.13,"b":1.5},"4881":{"s":0.09506,"d":1.686},"96":{"s":0.06132,"d":0.567},"12545":{"s":0.08379,"d":0.95},"4892":{"s":0.06737,"d":0.562},"9506":{"b":2.6},"7607":{"b":1.05},"4988":{"b":0.35},"9228":{"s":0.06001,"d":1.502},"8408":{"b":0.35},"7021":{"b":0.62},"11586":{"b":0.35},"12474":{"b":0.8},"8132":{"b":2.35},"12489":{"b":0.35},"3198":{"b":0.35},"12522":{"s":0.09404,"d":0.86},"4034":{"b":0.95},"7591":{"s":0.0916,"d":0.9},"4866":{"b":0.35},"5967":{"b":0.35},"7523":{"s":0.07256,"d":1.02,"b":1.1},"12508":{"s":0.08904,"d":0.96,"b":1.4},"12533":{"b":0.35},"11565":{"s":0.08701,"d":1.01},"12527":{"b":1.1},"10219":{"b":2.6},"11655":{"b":0.35},"9226":{"b":2.522},"11559":{"s":0.05979,"d":1.03},"9509":{"b":1.9},"12490":{"b":0.35},"6770":{"s":0.06846,"d":0.95},"9221":{"b":2.6},"3163":{"s":0.06696,"d":1.01},"8183":{"s":0.05552,"d":0.98},"12512":{"b":0.35},"8151":{"b":1.15},"4147":{"b":0.35},"12538":{"s":0.08426,"d":0.86},"11563":{"s":0.04461,"d":0.94,"b":1.3},"7567":{"b":0.35},"7543":{"b":0.35},"12534":{"b":0.35},"5892":{"b":0.35},"4199":{"b":0.35},"12481":{"b":0.35},"7611":{"b":0.35},"8150":{"b":1.25},"3161":{"s":0.08238,"d":0.98},"12486":{"s":0.0805,"d":0.86},"8228":{"b":0.35},"11562":{"s":0.07036,"d":0.89},"9224":{"b":0.35},"4984":{"s":0.08287,"d":1.0,"b":1.2},"8122":{"b":0.35},"7594":{"b":0.35},"4098":{"b":0.35},"11560":{"s":0.04934,"d":1.03},"4035":{"b":0.35},"11435":{"b":0.35},"3257":{"s":0.08414,"d":0.97},"9758":{"s":0.05916,"d":0.99},"2307":{"s":0.07056,"d":1.04},"5850":{"b":0.35},"9753":{"b":0.35},"7527":{"s":0.06326,"d":0.97},"11566":{"s":0.07848,"d":0.98},"5849":{"s":0.07832,"d":0.87},"8155":{"b":0.35},"6806":{"b":0.35},"6813":{"b":0.35},"11564":{"s":0.0893,"d":1.05,"b":1.4},"7588":{"b":0.35}},
+"teamPA":{"HOU":20.44,"NE":20.89,"BAL":22.72,"PIT":22.42,"IND":22.86,"ARI":24.7,"SEA":20.23,"LV":23.48,"NYJ":25.19,"DAL":25.48,"WAS":23.97,"LAC":21.22,"TB":23.03,"CLE":22.23,"ATL":22.65,"CAR":22.3,"JAX":21.12,"LAR":21.36,"NO":22.37,"GB":21.97,"MIA":23.34,"DET":23.17,"BUF":22.09,"PHI":21.1,"SF":22.04,"NYG":23.69,"TEN":24.18,"CHI":23.12,"CIN":23.76,"DEN":20.77,"KC":20.98,"MIN":20.77}};
+
+/* Constants fit on 2025 data. See the method note at the bottom of the page. */
+const M = {
+  shape:{rush:2.83, rec:2.12, pass:14.33},
+  tail:{rush200:0.81, rec200:0.10, pass400:0.35},
+  fumPerLost:2.15, leagueSack:0.0706,
+  cmp40pPer100:1.90,
+  rush40pPer100:0.55,
+  /* share of TDs long enough to trigger each bonus (2025). _40p and _50p are
+     OVERLAPPING counters in Sleeper: a 55-yd TD increments both, so both pay out. */
+  tdShare:{ pass:{p40:0.0826,p50:0.0444}, rush:{p40:0.0824,p50:0.0451}, rec:{p40:0.0888,p50:0.0456} },
+  fg5059Share:0.934,          // share of 50+ makes that are 50-59 rather than 60+
+  kShortRatio:1.0401, kShortMissRate:0.06,
+  defFfPerFumRec:1.6,
+};
+
+/* =====================================================================
+   MANAGER HISTORY — 7 completed drafts, 2019-2025, 1,148 picks.
+   `base[round][pos]`  league-wide P(position | round)
+   `mgr[user_id][pos]` mean round that manager first takes the position,
+                       shrunk toward the league mean by the measured ICC.
+   Only QB/TE/K/DEF are modelled per-manager. RB and WR have an ICC of
+   0.04 and 0.14 — when a manager takes them is not a personal trait, so
+   pretending otherwise would be fitting noise.
+   ===================================================================== */
+const MGRPROF = {"base":{"1":{"QB":0.0122,"RB":0.6098,"WR":0.3537,"TE":0.0244,"K":0.0,"DEF":0.0},"2":{"QB":0.0732,"RB":0.4878,"WR":0.3902,"TE":0.0488,"K":0.0,"DEF":0.0},"3":{"QB":0.1829,"RB":0.3415,"WR":0.3659,"TE":0.1098,"K":0.0,"DEF":0.0},"4":{"QB":0.0732,"RB":0.3171,"WR":0.4878,"TE":0.122,"K":0.0,"DEF":0.0},"5":{"QB":0.1951,"RB":0.2927,"WR":0.4268,"TE":0.0854,"K":0.0,"DEF":0.0},"6":{"QB":0.0976,"RB":0.2683,"WR":0.439,"TE":0.1951,"K":0.0,"DEF":0.0},"7":{"QB":0.1341,"RB":0.3171,"WR":0.3902,"TE":0.1585,"K":0.0,"DEF":0.0},"8":{"QB":0.1341,"RB":0.3537,"WR":0.4024,"TE":0.0854,"K":0.0122,"DEF":0.0122},"9":{"QB":0.1341,"RB":0.2683,"WR":0.3659,"TE":0.0976,"K":0.0732,"DEF":0.061},"10":{"QB":0.0732,"RB":0.2805,"WR":0.3537,"TE":0.122,"K":0.0488,"DEF":0.122},"11":{"QB":0.1341,"RB":0.2073,"WR":0.2317,"TE":0.1341,"K":0.1341,"DEF":0.1585},"12":{"QB":0.1585,"RB":0.1463,"WR":0.2805,"TE":0.0854,"K":0.1707,"DEF":0.1585},"13":{"QB":0.1463,"RB":0.0976,"WR":0.1951,"TE":0.1098,"K":0.1829,"DEF":0.2683},"14":{"QB":0.0854,"RB":0.1585,"WR":0.1585,"TE":0.0732,"K":0.3415,"DEF":0.1829}},"lgmean":{"QB":5.56,"RB":1.65,"WR":2.21,"TE":6.3,"K":12.36,"DEF":12.0},"icc":{"QB":0.341,"TE":0.282,"K":0.553,"DEF":0.204},"mgr":{"467845591938887680":{"QB":{"mu":5.14,"sd":2.08,"n":6,"raw":5.0},"TE":{"mu":7.03,"sd":3.73,"n":6,"raw":7.33},"K":{"mu":12.19,"sd":1.67,"n":6,"raw":12.17},"DEF":{"mu":12.0,"sd":1.73,"n":6,"raw":12.0}},"467896027408494592":{"QB":{"mu":4.67,"sd":1.59,"n":7,"raw":4.43},"TE":{"mu":5.45,"sd":1.64,"n":7,"raw":5.14},"K":{"mu":11.91,"sd":1.25,"n":7,"raw":11.86},"DEF":{"mu":11.36,"sd":1.77,"n":7,"raw":11.0}},"467858438039269376":{"QB":{"mu":3.67,"sd":1.12,"n":7,"raw":3.14},"TE":{"mu":4.41,"sd":1.58,"n":7,"raw":3.71},"K":{"mu":9.48,"sd":1.1,"n":7,"raw":9.14},"DEF":{"mu":11.72,"sd":1.1,"n":7,"raw":11.57}},"468914151633186816":{"QB":{"mu":4.23,"sd":1.12,"n":7,"raw":3.86},"TE":{"mu":5.98,"sd":1.64,"n":7,"raw":5.86},"K":{"mu":12.81,"sd":1.36,"n":7,"raw":12.86},"DEF":{"mu":12.28,"sd":1.4,"n":7,"raw":12.43}},"467890717264441344":{"QB":{"mu":5.23,"sd":2.75,"n":7,"raw":5.14},"TE":{"mu":7.13,"sd":2.38,"n":7,"raw":7.43},"K":{"mu":12.78,"sd":1.1,"n":6,"raw":12.83},"DEF":{"mu":10.99,"sd":1.29,"n":7,"raw":10.43}},"467726851029069824":{"QB":{"mu":5.12,"sd":1.51,"n":7,"raw":5.0},"TE":{"mu":5.45,"sd":2.29,"n":7,"raw":5.14},"K":{"mu":12.68,"sd":1.1,"n":7,"raw":12.71},"DEF":{"mu":12.64,"sd":1.1,"n":7,"raw":13.0}},"467581572795592704":{"QB":{"mu":5.12,"sd":1.69,"n":7,"raw":5.0},"TE":{"mu":7.02,"sd":2.6,"n":7,"raw":7.29},"K":{"mu":12.29,"sd":1.16,"n":7,"raw":12.29},"DEF":{"mu":12.56,"sd":1.1,"n":5,"raw":13.0}},"467833553560793088":{"QB":{"mu":6.44,"sd":2.83,"n":3,"raw":7.0},"TE":{"mu":5.78,"sd":1.25,"n":3,"raw":5.33},"K":{"mu":12.34,"sd":1.25,"n":3,"raw":12.33},"DEF":{"mu":12.0,"sd":1.63,"n":3,"raw":12.0}},"193928359825121280":{"QB":{"mu":8.14,"sd":1.46,"n":7,"raw":8.86},"TE":{"mu":9.75,"sd":2.73,"n":7,"raw":11.0},"K":{"mu":12.78,"sd":1.1,"n":6,"raw":12.83},"DEF":{"mu":12.3,"sd":1.1,"n":6,"raw":12.5}},"602263567978266624":{"QB":{"mu":6.02,"sd":1.6,"n":5,"raw":6.2},"TE":{"mu":5.44,"sd":3.58,"n":5,"raw":5.0},"K":{"mu":13.65,"sd":1.1,"n":3,"raw":14.0},"DEF":{"mu":12.34,"sd":1.1,"n":5,"raw":12.6}},"469175637257482240":{"QB":{"mu":5.89,"sd":1.83,"n":6,"raw":6.0},"TE":{"mu":6.91,"sd":1.1,"n":6,"raw":7.17},"K":{"mu":13.66,"sd":1.1,"n":6,"raw":13.83},"DEF":{"mu":12.0,"sd":1.53,"n":6,"raw":12.0}},"81478884214063104":{"QB":{"mu":6.65,"sd":2.38,"n":6,"raw":7.0},"TE":{"mu":5.74,"sd":3.1,"n":6,"raw":5.5},"K":{"mu":13.66,"sd":1.1,"n":6,"raw":13.83},"DEF":{"mu":12.61,"sd":1.1,"n":6,"raw":13.0}},"996892356668411904":{"QB":{"mu":6.84,"sd":1.1,"n":3,"raw":7.67},"TE":{"mu":6.32,"sd":1.1,"n":3,"raw":6.33},"K":{"mu":12.34,"sd":1.25,"n":3,"raw":12.33},"DEF":{"mu":11.71,"sd":1.7,"n":3,"raw":11.33}}},"seasons":7};
+
+/* Team pressure priors: 2025 per-game qb_hit / tkl_loss, regressed toward the league mean
+   by the observed year-over-year correlation (0.59 and 0.50). Sleeper does not project
+   either stat, but they are the two most persistent things a defense does. */
+const DEFPRI={"HOU":{"qh":5.586,"tl":5.052},"NE":{"qh":5.343,"tl":4.935},"BAL":{"qh":5.794,"tl":4.317},"PIT":{"qh":6.176,"tl":4.994},"IND":{"qh":5.69,"tl":4.876},"ARI":{"qh":4.753,"tl":4.435},"SEA":{"qh":6.523,"tl":4.964},"LV":{"qh":5.135,"tl":5.405},"NYJ":{"qh":4.302,"tl":4.641},"DAL":{"qh":6.037,"tl":4.847},"WAS":{"qh":5.551,"tl":4.405},"LAC":{"qh":5.447,"tl":5.023},"TB":{"qh":5.412,"tl":4.817},"CLE":{"qh":6.211,"tl":5.817},"ATL":{"qh":5.655,"tl":5.17},"CAR":{"qh":4.302,"tl":4.288},"JAX":{"qh":5.586,"tl":4.641},"LAR":{"qh":6.35,"tl":4.317},"NO":{"qh":5.204,"tl":5.023},"GB":{"qh":5.933,"tl":4.494},"MIA":{"qh":5.031,"tl":4.552},"DET":{"qh":5.864,"tl":4.376},"BUF":{"qh":5.482,"tl":4.847},"PHI":{"qh":5.933,"tl":4.464},"SF":{"qh":4.302,"tl":4.288},"NYG":{"qh":5.621,"tl":5.023},"TEN":{"qh":5.69,"tl":4.817},"CHI":{"qh":5.17,"tl":4.317},"CIN":{"qh":5.031,"tl":4.023},"DEN":{"qh":7.981,"tl":4.788},"KC":{"qh":5.864,"tl":4.582},"MIN":{"qh":5.69,"tl":5.523}};
+
+/* No per-kicker short-FG prior on purpose: the short:long FG ratio has a year-over-year
+   correlation of -0.08, i.e. it is noise. Using it would rank kickers on randomness.
+   The flat league ratio is applied to everyone, which leaves K value resting on the two
+   stable, actually-projected quantities: 50+ makes (YoY r=+0.64) and XPs (r=+0.44). */
+
+/* =====================================================================
+   MATH — regularised incomplete gamma, for per-game yardage bonuses
+   ===================================================================== */
+function lngamma(z){
+  const g=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,
+           12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(z<0.5) return Math.log(Math.PI/Math.sin(Math.PI*z))-lngamma(1-z);
+  z-=1; let x=0.99999999999980993;
+  for(let i=0;i<8;i++) x+=g[i]/(z+i+1);
+  const t=z+7.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function gammaSF(t,k,scale){
+  if(t<=0) return 1; if(scale<=0||k<=0) return 0;
+  const x=t/scale; if(x<=0) return 1;
+  let P;
+  if(x < k+1){
+    let sum=1/k, term=sum;
+    for(let n=1;n<600;n++){ term*=x/(k+n); sum+=term; if(Math.abs(term)<Math.abs(sum)*1e-14) break; }
+    P=sum*Math.exp(-x+k*Math.log(x)-lngamma(k));
+  } else {
+    const tiny=1e-300; let b=x+1-k,c=1/tiny,d=1/b,h=d;
+    for(let i=1;i<600;i++){
+      const an=-i*(i-k); b+=2; d=an*d+b; if(Math.abs(d)<tiny)d=tiny;
+      c=b+an/c; if(Math.abs(c)<tiny)c=tiny; d=1/d; const del=d*c; h*=del;
+      if(Math.abs(del-1)<1e-14) break;
+    }
+    P=1-Math.exp(-x+k*Math.log(x)-lngamma(k))*h;
+  }
+  return Math.max(0,Math.min(1,1-P));
+}
+function pGame(total,gp,thresh,kind,adj){
+  if(!gp||!total||total<=0) return 0;
+  const mu=total/gp,k=M.shape[kind];
+  return gammaSF(thresh,k,mu/k)*(adj||1);
+}
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+0.3275911*x);
+  return s*(1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x));}
+function normSF(x,mu,sd){ return 1-0.5*(1+erf((x-mu)/(sd*Math.SQRT2))); }
+
+/* points-allowed tier probabilities: gamma for the body, projected shutouts handled separately */
+function paTiers(mean){
+  const k=5.37, edges=[0.5,6.5,13.5,20.5,27.5,34.5];
+  const cdf=x=>1-gammaSF(x,k,mean/k);
+  const c=edges.map(cdf);
+  return {pts_allow_0:c[0], pts_allow_1_6:c[1]-c[0], pts_allow_7_13:c[2]-c[1],
+    pts_allow_14_20:c[3]-c[2], pts_allow_21_27:c[4]-c[3],
+    pts_allow_28_34:c[5]-c[4], pts_allow_35p:1-c[5]};
+}
+
+/* =====================================================================
+   SCORING ENGINE
+   ===================================================================== */
+const MODELED=new Set(['fum','pass_sack','pass_cmp_40p',
+  'pass_td_40p','pass_td_50p','rush_40p','rush_td_40p','rush_td_50p','rec_td_40p','rec_td_50p',
+  'bonus_rush_yd_100','bonus_rush_yd_200','bonus_rec_yd_100','bonus_rec_yd_200',
+  'bonus_pass_yd_300','bonus_pass_yd_400','bonus_rush_rec_yd_100','bonus_rush_rec_yd_200',
+  'fgm_0_19','fgm_20_29','fgm_30_39','fgm_50_59','fgm_60p',
+  'fgmiss_0_19','fgmiss_20_29','fgmiss_30_39','fgmiss',
+  'ff','def_st_ff','st_ff','st_fum_rec','def_st_fum_rec','qb_hit','tkl_loss',
+  'pts_allow_0','pts_allow_1_6','pts_allow_7_13','pts_allow_14_20','pts_allow_21_27',
+  'pts_allow_28_34','pts_allow_35p']);
+
+const VANILLA_PPR={pass_yd:.04,pass_td:4,pass_int:-1,pass_2pt:2,rush_yd:.1,rush_td:6,rush_2pt:2,
+  rec:1,rec_yd:.1,rec_td:6,rec_2pt:2,fum_lost:-2};
+
+function scorePlayer(st, sc, pos, pr, pure){
+  pr=pr||{};
+  /* Sleeper reports gp:1 for team defenses while giving full-season stat totals,
+     so st.gp cannot be trusted for DEF — use the season length instead. */
+  const gp = pos==='DEF' ? (pr.games||18) : (st.gp||17);
+  const bd={}; let pts=0;
+  const add=(l,v)=>{ if(v){ bd[l]=(bd[l]||0)+v; pts+=v; } };
+  for(const k in sc){
+    const w=sc[k]; if(!w) continue;
+    if(!pure && MODELED.has(k)) continue;
+    const v=st[k]; if(v==null) continue;
+    add(k,w*v);
+  }
+  if(pure) return {pts,bd};
+
+  if(sc.fum && st.fum_lost) add('Fumbles (modelled)', sc.fum*st.fum_lost*M.fumPerLost);
+  if(sc.pass_sack && st.pass_att)
+    add('Sacks taken (modelled)', sc.pass_sack*st.pass_att*(pr.s!=null?pr.s:M.leagueSack));
+  if(sc.pass_cmp_40p && st.pass_cmp)
+    add('40+ yd completions', sc.pass_cmp_40p*st.pass_cmp*M.cmp40pPer100/100*(pr.d||1));
+  if(sc.rush_40p && st.rush_att)
+    add('40+ yd runs', sc.rush_40p*st.rush_att*M.rush40pPer100/100*(pr.b||1));
+
+  /* Long-TD bonuses. _40p and _50p overlap, so a 50+ yard TD collects both. */
+  const tdBonus=(tdStat, kind, mult, label)=>{
+    const n=st[tdStat]; if(!n) return;
+    const sh=M.tdShare[kind];
+    if(sc[kind+'_td_40p']) add(label+' 40+ TD bonus', sc[kind+'_td_40p']*n*sh.p40*mult);
+    if(sc[kind+'_td_50p']) add(label+' 50+ TD bonus', sc[kind+'_td_50p']*n*sh.p50*mult);
+  };
+  tdBonus('pass_td','pass',(pr.d||1),'Pass');
+  tdBonus('rush_td','rush',(pr.b||1),'Rush');
+  tdBonus('rec_td','rec',1,'Rec');
+
+  if(sc.bonus_rush_yd_100) add('100-yd rush games', sc.bonus_rush_yd_100*gp*pGame(st.rush_yd,gp,100,'rush',1));
+  if(sc.bonus_rush_yd_200) add('200-yd rush games', sc.bonus_rush_yd_200*gp*pGame(st.rush_yd,gp,200,'rush',M.tail.rush200));
+  if(sc.bonus_rec_yd_100)  add('100-yd rec games',  sc.bonus_rec_yd_100*gp*pGame(st.rec_yd,gp,100,'rec',1));
+  if(sc.bonus_rec_yd_200)  add('200-yd rec games',  sc.bonus_rec_yd_200*gp*pGame(st.rec_yd,gp,200,'rec',M.tail.rec200));
+  if(sc.bonus_pass_yd_300) add('300-yd pass games', sc.bonus_pass_yd_300*gp*pGame(st.pass_yd,gp,300,'pass',1));
+  if(sc.bonus_pass_yd_400) add('400-yd pass games', sc.bonus_pass_yd_400*gp*pGame(st.pass_yd,gp,400,'pass',M.tail.pass400));
+
+  if(pos==='K'){
+    /* Sleeper's kicker projections only cover FGs of 40+ yards — they capture about 48%
+       of real FG volume and omit short attempts entirely. Short makes are therefore
+       inferred from the kicker's 2025 short:long ratio, shrunk toward the league's 1.04. */
+    const long_=(st.fgm_40_49||0)+(st.fgm_50p||0);
+    const ratio = pr.kr!=null ? pr.kr : M.kShortRatio;
+    const shortMade = long_*ratio;
+    const w=((sc.fgm_0_19||0)+(sc.fgm_20_29||0)+(sc.fgm_30_39||0))/3;
+    add('FGs under 40 (inferred)', shortMade*(w||3));
+    const miss=shortMade/(1-M.kShortMissRate)*M.kShortMissRate;
+    const mw=((sc.fgmiss_0_19||0)+(sc.fgmiss_20_29||0)+(sc.fgmiss_30_39||0))/3;
+    if(mw) add('Missed short FGs', miss*mw);
+    if(sc.fgmiss) add('Missed FGs', miss*sc.fgmiss);
+    /* fgm_50p is a SUPERSET of fgm_50_59 (verified: 50_59 + 60p = 50p in 2025 actuals),
+       so if both are scored, a 50-59 yd make collects both values. */
+    if(sc.fgm_50_59 && st.fgm_50p) add('50-59 yd FGs (inferred)', sc.fgm_50_59*st.fgm_50p*M.fg5059Share);
+    if(sc.fgm_60p && st.fgm_50p)   add('60+ yd FGs (inferred)',   sc.fgm_60p*st.fgm_50p*(1-M.fg5059Share));
+  }
+
+  if(pos==='DEF'){
+    if(sc.ff && st.fum_rec) add('Forced fumbles (modelled)', sc.ff*st.fum_rec*M.defFfPerFumRec);
+    /* Pressure: not projected by Sleeper, so taken from 2025 team rates regressed to the mean.
+       These are the most persistent defensive stats there are (YoY r 0.59 / 0.50). */
+    if(sc.qb_hit && pr.qh)   add('QB hits (modelled)',        sc.qb_hit*pr.qh*gp);
+    if(sc.tkl_loss && pr.tl) add('Tackles for loss (modelled)', sc.tkl_loss*pr.tl*gp);
+    const pa=pr.pa;
+    if(pa!=null){
+      const t=paTiers(pa);
+      let v=0;
+      for(const key in t){
+        if(key==='pts_allow_0') continue;         // use Sleeper's projected shutouts instead
+        v+=(sc[key]||0)*t[key]*gp;
+      }
+      if(sc.pts_allow_0 && st.pts_allow_0) v+=sc.pts_allow_0*st.pts_allow_0;
+      add('Points allowed (modelled)', v);
+    }
+  }
+  return {pts,bd};
+}
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const S={
+  league:null, draft:null, scoring:null, picks:[], players:[],
+  mySlot:null, myRosterId:null, teams:12, rounds:14,
+  repl:{}, filter:'ALL', q:'', hideGone:false, polling:true, timer:null,
+  starters:{}, benchCount:0,
+};
+const FLEX_ELIG=['RB','WR','TE'];
+const POSCOL=['QB','RB','WR','TE','K','DEF'];
+
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+
+async function j(url){
+  const r=await fetch(url);
+  if(!r.ok) throw new Error(url.split('/').slice(-2).join('/')+' → HTTP '+r.status);
+  return r.json();
+}
+
+/* =====================================================================
+   LOAD
+   ===================================================================== */
+async function boot(){
+  try{
+    S.league = await j(`https://api.sleeper.app/v1/league/${CFG.leagueId}`);
+    S.scoring = S.league.scoring_settings;
+    S.teams = S.league.total_rosters||12;
+
+    // manager display names, for the look-ahead panel
+    S.userNames={};
+    try{
+      const us = await j(`https://api.sleeper.app/v1/league/${CFG.leagueId}/users`);
+      for(const u of us) S.userNames[u.user_id]=u.display_name||u.username;
+    }catch(e){ /* names are cosmetic; carry on without them */ }
+
+    const drafts = await j(`https://api.sleeper.app/v1/league/${CFG.leagueId}/drafts`);
+    S.draft = drafts[0];
+    if(S.draft){
+      S.rounds = S.draft.settings.rounds||14;
+      const me = await j(`https://api.sleeper.app/v1/user/${CFG.username}`);
+      S.mySlot = S.draft.draft_order ? S.draft.draft_order[me.user_id] : null;
+      if(S.draft.slot_to_roster_id && S.mySlot) S.myRosterId=S.draft.slot_to_roster_id[S.mySlot];
+    }
+
+    // starter requirements
+    const rp=S.league.roster_positions||[];
+    S.starters={}; S.benchCount=0;
+    for(const p of rp){
+      if(p==='BN'){S.benchCount++;continue}
+      if(p==='IR'||p==='TAXI') continue;
+      S.starters[p]=(S.starters[p]||0)+1;
+    }
+
+    // projections
+    const packs = await Promise.all(POSCOL.map(p=>
+      j(`https://api.sleeper.app/projections/nfl/${CFG.season}?season_type=regular&position[]=${p}&order_by=pts_ppr`)
+        .catch(()=>[])
+    ));
+    // season length, taken from the offensive projections (DEF reports gp:1 and can't be used)
+    S.games = 17;
+    for(const pack of packs)
+      for(const e of pack){
+        const g=e.stats&&e.stats.gp;
+        if(g && g>1 && g<=20){ S.games=g; break; }
+      }
+
+    S.players=[];
+    packs.forEach((pack,i)=>{
+      const pos=POSCOL[i];
+      for(const e of pack){
+        const st=e.stats||{}; if(!st.pts_ppr) continue;
+        const pl=e.player||{};
+        const pid=String(e.player_id||pl.player_id||'');
+        const team=pl.team||(pl.metadata&&pl.metadata.team)||null;
+        const pr=Object.assign({}, PRIORS.players[pid]||{});
+        if(pos==='DEF'){
+          pr.games = S.games;
+          pr.pa = PRIORS.teamPA[pid]||PRIORS.teamPA[team]||22.5;
+          const dp = DEFPRI[pid]||DEFPRI[team];
+          if(dp){ pr.qh=dp.qh; pr.tl=dp.tl; }
+        }
+        const cust=scorePlayer(st,S.scoring,pos,pr,false);
+        const van =scorePlayer(st,VANILLA_PPR,pos,pr,true).pts;
+        S.players.push({
+          pid, pos, team,
+          name: pos==='DEF' ? `${pl.first_name||''} ${pl.last_name||''}`.trim()
+                            : `${pl.first_name||''} ${pl.last_name||''}`.trim(),
+          gp: st.gp||17,
+          proj:+cust.pts.toFixed(1), bd:cust.bd,
+          vanilla:+van.toFixed(1),
+          ruleDelta: van>40 ? +(((cust.pts/van)-1)*100).toFixed(1) : null,
+          adp: (st.adp_ppr!=null && st.adp_ppr<900) ? st.adp_ppr : null,
+          bye: pl.metadata&&pl.metadata.bye_week ? +pl.metadata.bye_week : null,
+          inj: pl.injury_status||null,
+          drafted:false, byMe:false, pickNo:null,
+        });
+      }
+    });
+
+    computeReplacement();
+    mLoad();
+    await syncPicks();
+    // a saved manual log from earlier in this draft means we were in manual mode: resume it
+    if(S.manual.length && S.manual.length > S.picks.length){
+      S.manualMode=true;
+      $('#manualbtn').classList.add('on'); $('#manualbtn').textContent='Manual mode ON';
+      $('#manualbar').style.display='';
+      S.polling=false; $('#poll').classList.remove('on'); $('#poll').textContent='Auto-sync OFF';
+      applyPicks(manualAsPicks()); renderManual();
+    }
+    $('#boot').style.display='none';
+    $('#main').style.display='';
+    $('#lgname').textContent = `· ${S.league.name} · ${S.teams} teams · ${S.rounds} rds` + (S.mySlot?` · you pick ${S.mySlot}`:'');
+    renderNotes();
+    render();
+    startPoll();
+  }catch(e){
+    $('#boot').innerHTML=`<div class="pad err"><b>Could not load.</b><br>${e.message}
+      <div class="note" style="margin-top:8px">If this says HTTP 404 on <code>projections</code>, Sleeper has changed that
+      endpoint — the board will still work from ADP but custom scoring will be unavailable.</div></div>`;
+  }
+}
+
+/* replacement level per position, given league size and lineup */
+function computeReplacement(){
+  const st=S.starters, T=S.teams;
+  const flex=st.FLEX||st.SUPER_FLEX||0;
+  // flex demand split for full PPR with a single flex spot
+  const share={RB:0.35,WR:0.55,TE:0.10};
+  const base={
+    QB:(st.QB||1)*T + Math.round(T*0.18),
+    RB:(st.RB||0)*T + Math.round(flex*T*share.RB) + Math.round(T*0.45),
+    WR:(st.WR||0)*T + Math.round(flex*T*share.WR) + Math.round(T*0.55),
+    TE:(st.TE||0)*T + Math.round(flex*T*share.TE) + Math.round(T*0.12),
+    K:(st.K||1)*T, DEF:(st.DEF||1)*T,
+  };
+  S.baseline=base;
+  for(const pos of POSCOL){
+    const list=S.players.filter(p=>p.pos===pos).sort((a,b)=>b.proj-a.proj);
+    list.forEach((p,i)=>p.posRank=i+1);
+    const b=base[pos]||12;
+    const win=list.slice(Math.max(0,b-1),b+4).map(p=>p.proj);
+    S.repl[pos]= win.length? win.reduce((a,c)=>a+c,0)/win.length : 0;
+  }
+  for(const p of S.players) p.vorp=+(p.proj-(S.repl[p.pos]||0)).toFixed(1);
+}
+
+/* =====================================================================
+   DRAFT SYNC
+   ===================================================================== */
+/* ---------- manual pick log (plan B when the API is struggling) ---------- */
+function mKey(){ return 'aqdraft:'+(S.draft?S.draft.draft_id:'x'); }
+function mLoad(){
+  try{ const r=localStorage.getItem(mKey()); S.manual = r? JSON.parse(r) : []; }
+  catch(e){ S.manual=[]; }
+  if(!Array.isArray(S.manual)) S.manual=[];
+}
+function mSave(){ try{ localStorage.setItem(mKey(), JSON.stringify(S.manual)); }catch(e){} }
+
+/* turn the manual list into pick objects shaped like Sleeper's */
+function manualAsPicks(){
+  return S.manual.map((pid,i)=>{
+    const no=i+1, round=Math.ceil(no/S.teams), inRound=no-(round-1)*S.teams;
+    const slot = round%2===1 ? inRound : (S.teams-inRound+1);
+    const rid = S.draft&&S.draft.slot_to_roster_id ? S.draft.slot_to_roster_id[slot] : slot;
+    return {pick_no:no, round, draft_slot:slot, roster_id:rid, player_id:pid};
+  });
+}
+function applyPicks(list){
+  S.picks=list||[];
+  const byPid={}; for(const p of S.players){p.drafted=false;p.byMe=false;p.pickNo=null; byPid[p.pid]=p;}
+  for(const k of S.picks){
+    const p=byPid[String(k.player_id)];
+    if(p){ p.drafted=true; p.pickNo=k.pick_no;
+           p.byMe = (S.myRosterId!=null && k.roster_id===S.myRosterId) ||
+                    (S.mySlot!=null && k.draft_slot===S.mySlot); }
+  }
+}
+
+async function syncPicks(){
+  if(S.manualMode){ applyPicks(manualAsPicks());
+    $('#live').textContent=`manual · ${S.manual.length} picks`; $('#live').className='pill';
+    return; }
+  if(!S.draft) return;
+  try{
+    const picks = await j(`https://api.sleeper.app/v1/draft/${S.draft.draft_id}/picks`);
+    applyPicks(picks);
+    $('#live').textContent = S.picks.length? `live · ${S.picks.length} picks` : 'live · pre-draft';
+    $('#live').className='pill live';
+    S.failStreak=0;
+  }catch(e){
+    S.failStreak=(S.failStreak||0)+1;
+    $('#live').textContent=`sync error ×${S.failStreak}`; $('#live').className='pill err';
+    // if Sleeper is genuinely struggling, offer the fallback rather than silently stalling
+    if(S.failStreak===3 && !S.manualMode)
+      $('#manualmeta').textContent='Sleeper is not responding — consider switching on manual entry.';
+  }
+}
+
+/* seed the manual log from whatever the API last gave us, so switching over mid-draft
+   doesn't mean retyping 40 picks */
+function seedManualFromApi(){
+  if(S.manual.length) return;
+  const apiPicks=S.picks.slice().sort((a,b)=>a.pick_no-b.pick_no);
+  S.manual=apiPicks.map(k=>String(k.player_id));
+  mSave();
+}
+
+/* snake-draft pick numbering */
+function pickNoFor(round, slot){
+  return (round-1)*S.teams + (round%2===1 ? slot : (S.teams-slot+1));
+}
+function myUpcoming(){
+  if(!S.mySlot) return [];
+  const out=[];
+  for(let r=1;r<=S.rounds;r++) out.push({round:r, no:pickNoFor(r,S.mySlot)});
+  return out;
+}
+function draftPos(){
+  const made=S.picks.length;
+  const cur=made+1;
+  const round=Math.ceil(cur/S.teams)||1;
+  const inRound=cur-(round-1)*S.teams;
+  const slot = round%2===1 ? inRound : (S.teams-inRound+1);
+  const next=myUpcoming().find(p=>p.no>=cur);
+  return {cur, round, inRound, slot, next, away: next? next.no-cur : null};
+}
+
+/* =====================================================================
+   SURVIVAL + EDGE
+   ===================================================================== */
+/* ---------- manager tendency model ---------- */
+function normPdf(x,mu,sd){ return Math.exp(-0.5*Math.pow((x-mu)/sd,2))/sd; }
+
+/* slot -> user_id, inverted from the draft order */
+function slotOwners(){
+  const out={};
+  if(S.draft&&S.draft.draft_order) for(const uid in S.draft.draft_order) out[S.draft.draft_order[uid]]=uid;
+  return out;
+}
+/* what each roster already holds this draft, keyed by draft slot */
+function rosterBySlot(){
+  const out={};
+  for(const k of S.picks){
+    const p=S.players.find(x=>x.pid===String(k.player_id));
+    if(!p) continue;
+    const s=k.draft_slot;
+    (out[s]=out[s]||{})[p.pos]=((out[s]||{})[p.pos]||0)+1;
+  }
+  return out;
+}
+/* P(position) for a given manager at a given round.
+   Anchored on the league baseline for that round, then nudged by how that
+   manager's personal timing compares with the league's. */
+function mgrPosProbs(uid, round, held){
+  const base = MGRPROF.base[round] || MGRPROF.base[14] || {};
+  const out={}; held=held||{};
+  for(const pos of POSCOL){
+    let v = base[pos]||0.0001;
+    if(['QB','TE','K','DEF'].includes(pos)){
+      const prof = (MGRPROF.mgr[uid]||{})[pos];
+      const lgMu = MGRPROF.lgmean[pos], lgSd = 2.6;
+      const mu = prof? prof.mu : lgMu;
+      const sd = prof? Math.max(1.2,prof.sd) : lgSd;
+      let mult = normPdf(round,mu,sd)/Math.max(1e-6,normPdf(round,lgMu,lgSd));
+      mult = Math.max(0.15, Math.min(4.0, mult));
+      if((held[pos]||0) >= 1) mult *= 0.30;   // already has one; rarely doubles up early
+      v *= mult;
+    }
+    out[pos]=v;
+  }
+  const tot=POSCOL.reduce((a,p)=>a+out[p],0)||1;
+  for(const p of POSCOL) out[p]/=tot;
+  return out;
+}
+/* Expected positional demand between now and my next pick, vs the league baseline.
+   ratio > 1 means more competition for that position than ADP alone implies. */
+function demandRatios(cur, target){
+  const owners=slotOwners(), held=rosterBySlot();
+  const exp={}, bas={};
+  for(const p of POSCOL){ exp[p]=0; bas[p]=0; }
+  for(let no=cur; no<target; no++){
+    const round=Math.ceil(no/S.teams), inRound=no-(round-1)*S.teams;
+    const slot = round%2===1 ? inRound : (S.teams-inRound+1);
+    const uid=owners[slot];
+    const pr=mgrPosProbs(uid, Math.min(round,14), held[slot]);
+    const base=MGRPROF.base[Math.min(round,14)]||{};
+    for(const p of POSCOL){ exp[p]+=pr[p]; bas[p]+=(base[p]||0); }
+  }
+  const out={};
+  for(const p of POSCOL){
+    // with negligible baseline demand the ratio is 0/0 — leave it neutral rather than
+    // reporting a clamped artifact (e.g. "K is soft" in round 4, where nobody takes a K)
+    out[p] = bas[p] < 0.25 ? 1 : Math.max(0.45, Math.min(2.4, exp[p]/bas[p]));
+  }
+  S.demandExp=exp; S.demandBase=bas;
+  return out;
+}
+
+/* P(player still on the board at pick `target`), given `cur` picks already gone.
+   ADP supplies the market baseline; the manager model reshapes it by position. */
+function survival(p, cur, target, ratios){
+  if(p.drafted) return 0;
+  if(!p.adp) return 0.92;                     // no market signal: assume he lingers
+  const sd=Math.max(4, 0.34*Math.pow(p.adp,0.92));
+  const sAt=x=>Math.max(1e-6, normSF(x, p.adp, sd));   // P(draft slot > x)
+  const now=sAt(cur-1);
+  let s=Math.max(0, Math.min(1, sAt(target-1)/now));   // conditional on being here now
+  const r = ratios && ratios[p.pos];
+  if(r) s = Math.pow(s, r);                            // heavier demand -> shorter survival
+  return Math.max(0, Math.min(1, s));
+}
+
+/* Edge = VORP now, minus expected VORP of the best player at that position
+   still available at my next pick. This is the real draft currency. */
+function computeEdge(){
+  const d=draftPos();
+  const avail=S.players.filter(p=>!p.drafted);
+  const nextNo = d.next ? d.next.no : d.cur;
+  const followingNo = (()=>{ const u=myUpcoming().filter(p=>p.no>nextNo); return u.length?u[0].no:null; })();
+
+  const ratios = followingNo? demandRatios(d.cur, followingNo) : null;
+  S.ratios=ratios;
+  for(const p of avail) p.surv = followingNo? survival(p,d.cur,followingNo,ratios) : 0;
+
+  const bestLater={};
+  for(const pos of POSCOL){
+    const list=avail.filter(p=>p.pos===pos).sort((a,b)=>b.vorp-a.vorp).slice(0,26);
+    // expected max VORP surviving to my following pick
+    let exp=0, pNoneBetter=1;
+    for(const p of list){
+      exp += pNoneBetter * p.surv * p.vorp;
+      pNoneBetter *= (1-p.surv);
+    }
+    bestLater[pos]=exp;
+  }
+  S.bestLater=bestLater;
+
+  const need=needMultipliers();
+  for(const p of S.players){
+    const raw = p.vorp - (S.bestLater[p.pos]||0);
+    p.edgeRaw = +raw.toFixed(1);
+    p.need = need[p.pos]||0;
+    p.edge = +(raw*need[p.pos]).toFixed(1);
+  }
+  return d;
+}
+
+/* how badly do I still need each position */
+function rosterState(){
+  const mine=S.players.filter(p=>p.byMe);
+  const have={};
+  for(const p of mine) have[p.pos]=(have[p.pos]||0)+1;
+  const st=S.starters;
+  // the single flex is consumed only by genuine SURPLUS at RB/WR/TE
+  const flexUsed = FLEX_ELIG.reduce((a,pos)=>a+Math.max(0,(have[pos]||0)-(st[pos]||0)),0);
+  const flexLeft = Math.max(0,(st.FLEX||0)-flexUsed);
+  const unfilled = {};
+  for(const pos of POSCOL) unfilled[pos]=Math.max(0,(st[pos]||0)-(have[pos]||0));
+  const d=draftPos();
+  return {have, flexLeft, unfilled, mine,
+    unfilledTotal: POSCOL.reduce((a,p)=>a+unfilled[p],0) + flexLeft,
+    roundsLeft: S.rounds-(d.round-1), picksLeft: myUpcoming().filter(p=>p.no>=d.cur).length};
+}
+
+function needMultipliers(){
+  const R=rosterState(), st=S.starters, out={};
+  // in the flex, a full-PPR WR beats an RB beats a TE
+  const flexPref={WR:1.00, RB:0.95, TE:0.40};
+  const benchVal ={WR:0.68, RB:0.74, TE:0.26};
+  for(const pos of POSCOL){
+    const req=st[pos]||0, h=R.have[pos]||0;
+    if(pos==='K'||pos==='DEF'){
+      out[pos] = h>=1 ? 0.02
+        : (R.roundsLeft<=2 ? 1.30 : R.roundsLeft<=3 ? 0.55 : 0.08);
+      continue;
+    }
+    if(pos==='QB'){ out[pos] = h===0 ? 1.05 : (h===1 ? 0.26 : 0.04); continue; }
+    if(h < req){
+      // a bigger hole is more urgent: 0-of-2 RB outranks 1-of-2 RB
+      out[pos] = 1.15 + 0.12*(req-h-1);
+    } else if(R.flexLeft>0){
+      out[pos] = flexPref[pos];
+    } else {
+      out[pos] = benchVal[pos];
+    }
+  }
+  return out;
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render(){
+  const d=computeEdge();
+  // header
+  $('#curpick').textContent = `R${d.round} · ${d.cur}`;
+  $('#onclock').textContent = S.picks.length>=S.teams*S.rounds ? 'complete' : `slot ${d.slot}`;
+  $('#onclock').className = (d.slot===S.mySlot?'onclock':'');
+  $('#nextpick').textContent = d.next? `R${d.next.round} · ${d.next.no}` : '—';
+  $('#picksaway').textContent = d.away!=null? (d.away===0?'YOU':d.away) : '—';
+
+  renderBoard(d);
+  renderRoster();
+  renderReco(d);
+  renderUpcoming(d);
+  renderNeeds();
+  renderDiverge();
+  $('#boardmeta').textContent = `replacement: ` +
+    POSCOL.map(p=>`${p} ${Math.round(S.repl[p]||0)}`).join(' · ');
+}
+
+function renderBoard(d){
+  const tb=$('#board tbody'); tb.innerHTML='';
+  let list=S.players.slice();
+  if(S.hideGone) list=list.filter(p=>!p.drafted);
+  if(S.filter==='FLEX') list=list.filter(p=>FLEX_ELIG.includes(p.pos));
+  else if(S.filter!=='ALL') list=list.filter(p=>p.pos===S.filter);
+  if(S.q){ const q=S.q.toLowerCase(); list=list.filter(p=>p.name.toLowerCase().includes(q)); }
+  list.sort((a,b)=> (a.drafted-b.drafted) || (b.edge-a.edge) || (b.vorp-a.vorp));
+  list=list.slice(0,240);
+
+  const maxEdge=Math.max(1,...list.filter(p=>!p.drafted).map(p=>p.edge));
+  // global board rank (filter-independent) so the ADP delta means the same thing everywhere
+  const globalRank={};
+  S.players.filter(p=>!p.drafted).sort((a,b)=>b.vorp-a.vorp).forEach((p,i)=>globalRank[p.pid]=i+1);
+  let shown=0;
+  for(const p of list){
+    const tr=el('tr');
+    if(p.drafted) tr.className='gone';
+    else if(p.need<0.15) tr.style.opacity='.5';
+    else if(shown===0){ tr.className='top1'; }
+    if(!p.drafted) shown++;
+    const adpRound = p.adp? Math.ceil(p.adp/S.teams) : null;
+    const myRound = globalRank[p.pid]? Math.ceil(globalRank[p.pid]/S.teams) : null;
+    const dlt = (p.adp && !p.drafted && myRound) ? adpRound-myRound : null;
+    tr.innerHTML=`
+      <td class="l sub">${p.drafted? '·' : shown}</td>
+      <td class="l"><span class="nm">${p.name}</span>
+        <div class="sub">${p.team||'FA'}${p.bye?' · bye '+p.bye:''}${p.inj?' · <span class="down">'+p.inj+'</span>':''}${p.drafted?' · pick '+p.pickNo+(p.byMe?' (you)':''):''}</div></td>
+      <td><span class="pos ${p.pos}">${p.pos}</span></td>
+      <td>${p.proj.toFixed(0)}</td>
+      <td>${p.vorp>0?'+':''}${p.vorp.toFixed(0)}</td>
+      <td>${p.drafted?''
+        : p.need<0.15 ? '<span class="neu" title="This position is deliberately deferred to the last rounds — see notes">hold</span>'
+        : `<span class="${p.edge>0?'up':'neu'}">${p.edge>0?'+':''}${p.edge.toFixed(0)}</span>
+           <span class="bar" style="width:${Math.max(0,Math.min(38,p.edge/maxEdge*38))}px"></span>`}</td>
+      <td class="surv">${p.drafted?'—':survCell(p.surv)}</td>
+      <td class="sub">${p.adp? p.adp.toFixed(1):'—'}</td>
+      <td>${dlt==null?'':`<span class="${dlt>0?'up':dlt<0?'down':'neu'}">${dlt>0?'+':''}${dlt}r</span>`}</td>
+      <td>${p.drafted?'':`<button class="act" data-take="${p.pid}">gone</button>`}</td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll('[data-take]').forEach(b=>b.onclick=()=>{
+    const p=S.players.find(x=>x.pid===b.dataset.take);
+    if(p){p.drafted=true;p.pickNo='manual';render();}
+  });
+}
+function survCell(s){
+  if(s==null) return '—';
+  const pct=Math.round(s*100);
+  const c = pct>=70?'up' : pct>=35?'':'down';
+  return `<span class="${c}">${pct}%</span>`;
+}
+
+function renderRoster(){
+  const mine=S.players.filter(p=>p.byMe).sort((a,b)=>a.pickNo-b.pickNo);
+  const rp=(S.league.roster_positions||[]).filter(x=>x!=='IR');
+  const pool=mine.slice(); const filled=[];
+  for(const slot of rp){
+    let idx=-1;
+    if(slot==='BN') idx=-1;
+    else if(slot==='FLEX') idx=pool.findIndex(p=>FLEX_ELIG.includes(p.pos));
+    else idx=pool.findIndex(p=>p.pos===slot);
+    if(idx>=0){ filled.push({slot,p:pool.splice(idx,1)[0]}); } else filled.push({slot,p:null});
+  }
+  $('#myslots').innerHTML = filled.filter(f=>f.slot!=='BN').map(f=>
+    `<span class="slot ${f.p?'full':''}">${f.slot}${f.p?': '+f.p.name.split(' ').slice(-1)[0]:''}</span>`).join('');
+  $('#rostermeta').textContent = `${mine.length} / ${S.rounds}`;
+  const tot=mine.reduce((a,c)=>a+c.proj,0);
+  $('#myplayers').innerHTML = mine.length
+    ? mine.map(p=>`<div class="kv"><span><span class="pos ${p.pos}">${p.pos}</span> ${p.name}</span><span>${p.proj.toFixed(0)}</span></div>`).join('')
+      + `<div class="kv" style="margin-top:5px"><span><b>Projected total</b></span><span><b>${tot.toFixed(0)}</b></span></div>`
+    : '<span class="note">No picks yet.</span>';
+}
+
+function renderReco(d){
+  const box=$('#reco');
+  if(S.picks.length>=S.teams*S.rounds){ box.innerHTML='<span class="note">Draft complete.</span>'; return; }
+  const avail=S.players.filter(p=>!p.drafted).sort((a,b)=>b.edge-a.edge);
+  if(!avail.length){ box.innerHTML='<span class="note">No players available.</span>'; return; }
+  const onClock = d.slot===S.mySlot;
+  const top=avail.slice(0,6);
+  const t=top[0];
+
+  let why=[];
+  if(t.need>=1.1) why.push(`you still need a starting ${t.pos}`);
+  if(t.surv<0.35) why.push(`only ${Math.round(t.surv*100)}% chance he lasts to your next pick`);
+  else if(t.surv>0.7) why.push(`<b>${Math.round(t.surv*100)}% chance he's still there next time</b> — you can wait`);
+  const later=S.bestLater[t.pos]||0;
+  why.push(`best ${t.pos} likely available at your next pick is worth about ${later.toFixed(0)} VORP vs his ${t.vorp.toFixed(0)}`);
+
+  /* one short reason per shortlisted player */
+  const reason=p=>{
+    if(p.need>=1.15 && p.surv<0.4) return 'fills a hole and probably won\'t last';
+    if(p.surv<0.25) return 'about to go';
+    if(p.need>=1.15) return `fills your ${p.pos} hole`;
+    if(p.surv>0.75) return 'safe to wait on';
+    const gap=p.vorp-(S.bestLater[p.pos]||0);
+    if(gap>12) return `${gap.toFixed(0)} better than the next ${p.pos} you'd get`;
+    return 'best value on the board';
+  };
+  const shortlist = top.map((p,i)=>`
+    <div class="kv" style="${i===0?'border-bottom:1px solid var(--line);padding-bottom:5px':''}">
+      <span><b>${i+1}.</b> <span class="pos ${p.pos}">${p.pos}</span> ${p.name}
+        <span class="sub">· ${reason(p)}</span></span>
+      <span style="white-space:nowrap"><span class="${p.edge>0?'up':'neu'}">${p.edge>0?'+':''}${p.edge.toFixed(0)}</span>
+        <span class="sub"> ${Math.round(p.surv*100)}%</span></span>
+    </div>`).join('');
+
+  // structural guard: are we about to run out of picks to fill starting slots?
+  const R=rosterState();
+  let warn='';
+  const holes=POSCOL.filter(p=>R.unfilled[p]>0);
+  if(R.unfilledTotal >= R.picksLeft && R.picksLeft>0){
+    warn=`<div class="note" style="margin-bottom:8px;color:var(--bad)"><b>Roster risk:</b> ${R.unfilledTotal}
+      starting slots still empty (${holes.map(p=>`${R.unfilled[p]}×${p}`).join(', ')}${R.flexLeft?', FLEX':''})
+      and only ${R.picksLeft} picks left. Fill slots over chasing value from here.</div>`;
+  } else if(R.unfilled[t.pos]===0 && holes.length && t.need<0.9){
+    warn=`<div class="note" style="margin-bottom:8px;color:var(--warn)">You already have your
+      starting ${t.pos}. He'd be flex or bench — you still need ${holes.map(p=>`${R.unfilled[p]}×${p}`).join(', ')}.</div>`;
+  }
+
+  box.innerHTML = `
+    <div style="font-size:15px;font-weight:650;margin-bottom:3px">
+      ${onClock?'<span class="onclock">ON THE CLOCK — </span>':''}${t.name}
+      <span class="pos ${t.pos}">${t.pos}</span></div>
+    ${warn}
+    <div class="note" style="margin-bottom:8px">${why.join('; ')}.</div>
+    ${shortlist}
+    <div class="mini" style="margin-top:7px;color:var(--dimmer)">Right-hand figures are Edge and the chance
+      he survives to your next pick. Edge already accounts for what you'd likely get at this position later,
+      and for the slots you still have to fill.</div>`;
+}
+
+function renderUpcoming(d){
+  const box=$('#upcoming');
+  const next = myUpcoming().filter(p=>p.no>(d.next?d.next.no:d.cur))[0];
+  if(!d.next || !next){ box.innerHTML='<span class="note">No further picks of yours to look ahead to.</span>'; return; }
+  const from = d.next.no, to = next.no;
+  const owners=slotOwners(), held=rosterBySlot();
+  const rows=[];
+  for(let no=from+1; no<to; no++){
+    const round=Math.ceil(no/S.teams), inRound=no-(round-1)*S.teams;
+    const slot = round%2===1 ? inRound : (S.teams-inRound+1);
+    const uid=owners[slot];
+    const nm=S.userNames&&S.userNames[uid] ? S.userNames[uid] : `slot ${slot}`;
+    const pr=mgrPosProbs(uid, Math.min(round,14), held[slot]);
+    const best=POSCOL.slice().sort((a,b)=>pr[b]-pr[a]);
+    const prof=MGRPROF.mgr[uid]||{};
+    const habit=['QB','TE','K','DEF'].filter(p=>prof[p]).map(p=>`${p} r${prof[p].raw}`).join(' · ');
+    rows.push(`<div class="kv"><span>${nm}
+      <span class="sub">${habit?'· usually '+habit:'· no history'}</span></span>
+      <span><span class="pos ${best[0]}">${best[0]}</span> <span class="sub">${Math.round(pr[best[0]]*100)}%</span>
+        <span class="pos ${best[1]}" style="opacity:.55">${best[1]}</span></span></div>`);
+  }
+  const r=S.ratios||{};
+  const hot=POSCOL.filter(p=>r[p]>1.15).sort((a,b)=>r[b]-r[a]);
+  const cold=POSCOL.filter(p=>r[p]<0.85).sort((a,b)=>r[a]-r[b]);
+  box.innerHTML =
+    `<div class="mini" style="margin-bottom:6px">${to-from-1} picks between your R${d.next.round}
+      and R${next.round} selections.</div>`+
+    (rows.join('')||'<span class="note">Back-to-back picks — nobody in between.</span>')+
+    `<div class="note" style="margin-top:8px">`+
+      (hot.length? `<b>Extra pressure:</b> ${hot.map(p=>`${p} (×${r[p].toFixed(2)})`).join(', ')}. `:'')+
+      (cold.length? `<b>Softer than ADP suggests:</b> ${cold.map(p=>`${p} (×${r[p].toFixed(2)})`).join(', ')}.`:'')+
+      (!hot.length&&!cold.length? 'Demand between now and then looks close to normal.':'')+
+    `</div>`;
+}
+
+function renderNeeds(){
+  // what every other team still needs to start — drives run prediction
+  const byRoster={};
+  for(const k of S.picks){
+    const p=S.players.find(x=>x.pid===String(k.player_id));
+    if(!p) continue;
+    const id=k.roster_id!=null?k.roster_id:('slot'+k.draft_slot);
+    (byRoster[id]=byRoster[id]||[]).push(p);
+  }
+  const st=S.starters;
+  const short={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};
+  const nT=S.teams;
+  for(let i=0;i<nT;i++){
+    const id=S.draft&&S.draft.slot_to_roster_id? S.draft.slot_to_roster_id[i+1] : ('slot'+(i+1));
+    const list=byRoster[id]||[];
+    const have={}; for(const p of list) have[p.pos]=(have[p.pos]||0)+1;
+    for(const pos of POSCOL){
+      const need=(st[pos]||0)-(have[pos]||0);
+      if(need>0) short[pos]+=need;
+    }
+  }
+  // Squeeze = unfilled starters in the room / genuine starters left on the board.
+  // K and DEF are structurally "squeezed" all draft long because nobody takes them early,
+  // so they are shown but not ranked until the position actually comes into play.
+  const d=draftPos();
+  const roundsLeft=S.rounds-(d.round-1);
+  const late = roundsLeft<=3;
+  const rows=POSCOL.map(pos=>{
+    const avail=S.players.filter(p=>!p.drafted&&p.pos===pos);
+    const startersLeft=avail.filter(p=>p.vorp>0).length;
+    const deferred=(pos==='K'||pos==='DEF')&&!late;
+    const pressure = deferred ? null
+      : (short[pos] && startersLeft ? short[pos]/startersLeft : (short[pos]?9:0));
+    return {pos, short:short[pos], startersLeft, pressure, deferred};
+  }).sort((a,b)=>(a.deferred-b.deferred)||((b.pressure||0)-(a.pressure||0)));
+  $('#needs').innerHTML =
+    `<tr><th class="l">Pos</th><th>Unfilled<br>starters</th><th>+VORP<br>left</th><th>Squeeze</th></tr>`+
+    rows.map(r=>`<tr${r.deferred?' style="opacity:.42"':''}><td class="l"><span class="pos ${r.pos}">${r.pos}</span></td>
+      <td>${r.short}</td><td>${r.startersLeft}</td>
+      <td>${r.deferred?'<span class="neu">late</span>'
+        :`<span class="${r.pressure>0.7?'down':r.pressure>0.35?'':'neu'}">${r.pressure? r.pressure.toFixed(2):'—'}</span>`}</td></tr>`).join('')+
+    `<tr><td colspan="4" class="sub" style="padding-top:6px;border:none">Higher squeeze = more teams chasing fewer real starters. Above ~0.7, expect a run.</td></tr>`;
+}
+
+function renderDiverge(){
+  const pool=S.players.filter(p=>p.ruleDelta!=null && p.adp && p.adp<=180 && ['QB','RB','WR','TE'].includes(p.pos));
+  const up=pool.slice().sort((a,b)=>b.ruleDelta-a.ruleDelta).slice(0,6);
+  const dn=pool.slice().sort((a,b)=>a.ruleDelta-b.ruleDelta).slice(0,6);
+  const row=p=>`<tr><td class="l"><span class="pos ${p.pos}">${p.pos}</span> ${p.name}</td>
+    <td class="sub">${p.vanilla.toFixed(0)}→${p.proj.toFixed(0)}</td>
+    <td><span class="${p.ruleDelta>0?'up':'down'}">${p.ruleDelta>0?'+':''}${p.ruleDelta}%</span></td></tr>`;
+  $('#diverge').innerHTML =
+    `<tr><th class="l" colspan="3" style="color:var(--good)">Your rules help most</th></tr>`+up.map(row).join('')+
+    `<tr><th class="l" colspan="3" style="color:var(--bad);padding-top:9px">Your rules hurt most</th></tr>`+dn.map(row).join('');
+}
+
+function renderNotes(){
+  const sc=S.scoring;
+  const bits=[];
+  if(sc.rec) bits.push(`<b>${sc.rec} PPR</b>`);
+  if(sc.pass_td) bits.push(`${sc.pass_td}-pt pass TD`);
+  if(sc.pass_int) bits.push(`${sc.pass_int} INT`);
+  if(sc.pass_sack) bits.push(`<b>${sc.pass_sack} per sack taken</b>`);
+  if(sc.fum_lost||sc.fum) bits.push(`${(sc.fum_lost||0)+(sc.fum||0)*M.fumPerLost/2.15} fumble`);
+  if(sc.bonus_rec_yd_100) bits.push(`+${sc.bonus_rec_yd_100} at 100 rec yds`);
+  if(sc.bonus_rush_yd_100) bits.push(`+${sc.bonus_rush_yd_100} at 100 rush yds`);
+  if(sc.rush_40p) bits.push(`+${sc.rush_40p} per 40+ yd run`);
+  if(sc.pass_cmp_40p) bits.push(`+${sc.pass_cmp_40p} per 40+ yd completion`);
+  $('#notes').innerHTML = `Reading scoring <b>live</b> from Sleeper — if you change a setting in your league,
+    reload this page and every number moves with it.<br><br><b>Active rules:</b> ${bits.join(' · ')}.
+    <br><br><b>Lineup:</b> ${(S.league.roster_positions||[]).join(' / ')}.`;
+
+  $('#method').innerHTML = `
+  <p><b>Projections</b> come from Sleeper's projection endpoint as full stat lines — carries, targets, receptions,
+  yards, TDs — not as points. Every player is then re-scored under your league's exact <code>scoring_settings</code>,
+  which is why this board differs from Sleeper's ADP.</p>
+  <p><b>Validated:</b> fed Sleeper's own PPR settings, this engine reproduces their published <code>pts_ppr</code>
+  to the decimal for QB, TE and K, and to within 0.5 pts on average for RB/WR (the gap is return TDs, which your
+  league scores and their PPR column doesn't).</p>
+  <p><b>Modelled, not measured</b> — Sleeper doesn't project these, so they're estimated from 2025 data:</p>
+  <ul style="margin:4px 0 4px 16px;padding:0">
+    <li><b>Sacks taken</b> (${(S.scoring.pass_sack||0)} each): per-QB 2025 sack rate, shrunk toward the 7.06% league mean.
+        Real spread — 3.6% to 13.2%.</li>
+    <li><b>100/200-yard games</b>: per-game yards modelled as a gamma distribution (shape 2.83 rushing, 2.12 receiving,
+        fit on 2,000+ 2025 game logs). Season totals alone cannot see these bonuses at all.</li>
+    <li><b>40+ yard plays</b>: per-player explosive rates counted from 2025 game logs, shrunk toward league rate.</li>
+    <li><b>Total fumbles</b>: 2.15 × projected fumbles lost (2025 ratio), since only lost fumbles are projected.</li>
+    <li><b>Kicker short FGs</b>: Sleeper's kicker projections only cover FGs of 40+ yards — across the
+        league they account for just 48% of actual 2025 FG volume, and short attempts are absent entirely.
+        Short makes are inferred by applying the league's 1.04 short:long ratio to projected 40+ makes.
+        A per-kicker ratio was tested and thrown out — it has a year-over-year correlation of -0.08, so it
+        would have ranked kickers on noise. Any kicker ranking built straight off Sleeper's raw numbers is
+        missing roughly half the field goals.</li>
+    <li><b>Team defense points allowed</b>: 2025 actual regressed 40% to the mean, then integrated over your
+        points-allowed tiers. This is the softest number on the page.</li>
+    <li><b>Defensive pressure</b> (QB hits, tackles for loss): Sleeper projects neither, so both come from
+        2025 team rates regressed toward the league mean by their measured year-over-year correlation
+        (0.59 and 0.50 — the two most persistent things a defense does).</li>
+    <li><b>Long TD bonuses</b>: <code>_40p</code> and <code>_50p</code> are overlapping counters in Sleeper,
+        so a 50+ yard TD collects both. Applied using 2025 shares: about 8.3% of TDs travel 40+, and 4.5% travel 50+.</li>
+  </ul>
+  <p><b>Note on <code>gp</code>:</b> Sleeper reports <code>gp: 1</code> for team defenses while giving
+  full-season stat totals. Anything that multiplies a per-game rate by <code>gp</code> silently comes out
+  17× too small for DEF. This board uses the season length taken from the offensive projections instead.</p>
+  <p><b>DEF and K are deliberately deferred</b> to the last three rounds and show <em>hold</em> rather than an
+  edge until then. Their VORP is measured against the 12th-best option, which overstates them: a defense or
+  kicker is streamable off waivers every week, so the genuinely free alternative is much better than "the 12th
+  best one", and no VORP calculation set up this way captures that. If you'd rather the board treat them as
+  ordinary assets, that deferral is one line to change.</p>
+  <p><b>Known blind spot:</b> expected-points models systematically fade backup running backs and rookies,
+  because the market prices in contingent value (the handcuff who inherits a job on one injury) and wide outcome
+  ranges that a single season projection can't express. If this board tells you a well-drafted backup RB is
+  worthless, that's the model's limitation, not an insight.</p>
+  <p><b>Edge</b> is the column to draft on: a player's VORP minus the VORP you'd expect from the best player at his
+  position still on the board at your next pick, then weighted by the lineup slots you still have to fill.
+  It answers "what do I lose by waiting" rather than "who is best".</p>
+  <p><b>Manager tendencies</b> are built from your league's 7 completed drafts (2019-2025, 1,148 picks). For each
+  manager the model holds the average round they first take a QB, TE, K and DEF, shrunk toward the league mean
+  in proportion to how repeatable that habit actually is. Measured intraclass correlations:
+  <b>K 0.55</b> (a strong personal habit — Wilty averages round 9.1, Fabone11 round 14),
+  <b>QB 0.34</b>, <b>TE 0.28</b>, <b>DEF 0.20</b>.
+  RB and WR came out at <b>0.04</b> and <b>0.14</b> — when a manager takes them is not a personal trait, so no
+  per-manager adjustment is applied there and the board falls back to ADP alone. Survival probabilities are then
+  reshaped by the expected positional demand from whoever actually picks between your two selections.
+  Seven observations per manager is a thin sample; treat this as a nudge to the market price, not a crystal ball.
+  One thing that genuinely can't be modelled from this data: whether a manager reaches above consensus, since
+  Sleeper exposes no historical ADP to compare their picks against.</p>`;
+}
+
+/* =====================================================================
+   EVENTS
+   ===================================================================== */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.fp');
+  if(b){ document.querySelectorAll('.fp').forEach(x=>x.classList.remove('on'));
+         b.classList.add('on'); S.filter=b.dataset.p; render(); }
+});
+$('#q').addEventListener('input',e=>{S.q=e.target.value;render();});
+$('#togglegone').onclick=e=>{S.hideGone=!S.hideGone;e.target.classList.toggle('on',S.hideGone);
+  e.target.textContent=S.hideGone?'Drafted hidden':'Hide drafted';render();};
+$('#refresh').onclick=()=>location.reload();
+
+/* ---------- manual mode ---------- */
+$('#manualbtn').onclick=e=>{
+  S.manualMode=!S.manualMode;
+  e.target.classList.toggle('on',S.manualMode);
+  e.target.textContent = S.manualMode? 'Manual mode ON' : 'Manual mode';
+  $('#manualbar').style.display = S.manualMode? '' : 'none';
+  if(S.manualMode){
+    seedManualFromApi();          // carry over anything the API already told us
+    S.polling=false; clearInterval(S.timer);
+    $('#poll').classList.remove('on'); $('#poll').textContent='Auto-sync OFF';
+    applyPicks(manualAsPicks());
+    $('#mq').focus();
+  } else {
+    S.polling=true; $('#poll').classList.add('on'); $('#poll').textContent='Auto-sync ON';
+    startPoll(); syncPicks().then(render);
+  }
+  renderManual(); render();
+};
+function renderManual(){
+  if(!S.manualMode) return;
+  const n=S.manual.length;
+  const round=Math.floor(n/S.teams)+1, inRound=n-(round-1)*S.teams+1;
+  const slot = round%2===1 ? inRound : (S.teams-inRound+1);
+  const owners=slotOwners();
+  const who=S.userNames&&S.userNames[owners[slot]] ? S.userNames[owners[slot]] : `slot ${slot}`;
+  $('#manualmeta').textContent = n>=S.teams*S.rounds
+    ? 'draft complete'
+    : `next entry = pick ${n+1} (R${round}, ${who})`;
+}
+function manualSuggest(){
+  const q=$('#mq').value.trim().toLowerCase();
+  const box=$('#msug');
+  if(q.length<2){ box.innerHTML=''; return; }
+  const hits=S.players.filter(p=>!p.drafted && p.name.toLowerCase().includes(q))
+    .sort((a,b)=>b.vorp-a.vorp).slice(0,6);
+  box.innerHTML = hits.length
+    ? hits.map(p=>`<button class="act" data-mtake="${p.pid}" style="margin:2px 4px 2px 0;padding:4px 8px;font-size:12px">
+        <span class="pos ${p.pos}">${p.pos}</span> ${p.name} <span class="sub">${p.team||''}</span></button>`).join('')
+    : '<span class="sub">no match among undrafted players</span>';
+  box.querySelectorAll('[data-mtake]').forEach(b=>b.onclick=()=>manualTake(b.dataset.mtake));
+}
+function manualTake(pid){
+  if(!pid) return;
+  S.manual.push(String(pid)); mSave();
+  applyPicks(manualAsPicks());
+  $('#mq').value=''; $('#msug').innerHTML='';
+  renderManual(); render(); $('#mq').focus();
+}
+$('#mq').addEventListener('input',manualSuggest);
+$('#mq').addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter') return;
+  ev.preventDefault();
+  const q=$('#mq').value.trim().toLowerCase();
+  if(q.length<2) return;
+  const hits=S.players.filter(p=>!p.drafted && p.name.toLowerCase().includes(q))
+    .sort((a,b)=>b.vorp-a.vorp);
+  if(hits.length) manualTake(hits[0].pid);
+});
+$('#mundo').onclick=()=>{
+  if(!S.manual.length) return;
+  S.manual.pop(); mSave(); applyPicks(manualAsPicks()); renderManual(); render();
+};
+$('#mclear').onclick=()=>{
+  if(!confirm('Clear every manually entered pick?')) return;
+  S.manual=[]; mSave(); applyPicks(manualAsPicks()); renderManual(); render();
+};
+$('#poll').onclick=e=>{
+  S.polling=!S.polling; e.target.classList.toggle('on',S.polling);
+  e.target.textContent=S.polling?'Auto-sync ON':'Auto-sync OFF';
+  if(S.polling) startPoll(); else clearInterval(S.timer);
+};
+function startPoll(){
+  clearInterval(S.timer);
+  if(!S.polling) return;
+  S.timer=setInterval(async()=>{ const n=S.picks.length; await syncPicks();
+    if(S.picks.length!==n) render(); else { const d=draftPos(); $('#curpick').textContent=`R${d.round} · ${d.cur}`; }
+  }, CFG.pollMs);
+}
+
+boot();
+</script>
+</body>
+</html>
