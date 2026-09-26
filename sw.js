@@ -1,22 +1,11 @@
-/* Offline support: serve the cached app instantly, refresh it in the background. */
-const CACHE = 'adb-hockey-20260926-1007';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png',
-  './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
-});
+/* Clean-up only. An earlier upload put the hockey board's offline helper at this
+   address. This version removes itself so the football board here loads normally.
+   The hockey board has its own helper in /nhl/ and is not affected. */
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
-});
-self.addEventListener('fetch', e => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-  if (url.origin !== location.origin) return;
-  e.respondWith(caches.open(CACHE).then(async c => {
-    const hit = await c.match(req, { ignoreSearch: true });
-    const net = fetch(req).then(r => { if (r && r.ok) c.put(req, r.clone()); return r; }).catch(() => hit);
-    return hit || net;
-  }));
+  e.waitUntil((async () => {
+    await self.registration.unregister();
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(c => c.navigate(c.url));
+  })());
 });
